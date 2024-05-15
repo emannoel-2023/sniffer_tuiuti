@@ -3,10 +3,13 @@ from scapy.layers.http import HTTP, HTTPRequest, HTTPResponse
 from urllib import parse
 import os
 from scapy.layers.inet import TCP
+from tkinter import messagebox, Tk
+import threading
 
 interface = "lo"
 
-def filter_HTTP(pkt):return TCP in pkt and (pkt[TCP].dport == 5001 or pkt[TCP].sport == 5001)  # Capture on default HTTP port (80)
+def filter_HTTP(pkt):
+    return TCP in pkt and (pkt[TCP].dport == 5001 or pkt[TCP].sport == 5001) and Raw in pkt  # Capture on default HTTP port (80)
 
 SENSITIVE_DATA = {
     "login": ["username", "user", "nome", "user name", "fname"],
@@ -22,6 +25,12 @@ SENSITIVE_DATA = {
 save_dir = "/home/gengar/PycharmProjects/sniffer/captures"
 os.makedirs(save_dir, exist_ok=True)
 
+def show_popup(sensitive_data_found):
+    root = Tk()
+    root.withdraw()  # Esconde a janela principal
+    messagebox.showinfo("Dados sensíveis encontrados", str(sensitive_data_found))
+    root.destroy()
+
 print("1) Captura iniciada...")
 packets = sniff(iface=interface, count=20, lfilter=filter_HTTP)
 
@@ -30,8 +39,10 @@ json_packets = []
 for pkt in packets:
     print("-" * 40)
     print(f"**Pacote capturado:**")
-    print(pkt.summary())
-    print(pkt.show())
+    #print(pkt.summary())
+    #print(pkt.show())
+    #ls(pkt)
+    print(pkt[IP].src)
     url = ""
     body = ""
     method = ""
@@ -39,6 +50,7 @@ for pkt in packets:
         load = pkt[Raw].load.lower()
         try:
             http_packet = HTTP(load)
+            print("Resultado: ",load)
             if http_packet.haslayer(HTTPRequest):
                 url = parse.unquote(
                     http_packet[HTTPRequest].Host.decode() + http_packet[HTTPRequest].Path.decode() + "?" +
@@ -66,19 +78,12 @@ for pkt in packets:
                 sensitive_data_found[key].append((url, value, method, "Body"))
     print("-" * 40)
 
-for key, data in sensitive_data_found.items():
-    print(f"**Dados sensíveis encontrados ({key}):**")
-    for url, value, method, location in data:
-        print(f"• URL: {url}, Dado sensível: {value}, Método: {method}, Localização: {location}")
-        if location == "Raw":
-            load = url.split('&')
-            for i in load:
-                if value in i:
-                    print(f"    - {i.replace('+', ' ')}")
-
 filename = "captura_completa.pcap"
 filepath = os.path.join(save_dir, filename)
 wrpcap(filepath, packets)
 
 print(f"**Captura salva: {filepath}")
 print("...Captura finalizada!")
+
+# Adiciona a chamada para mostrar a janela pop-up
+threading.Thread(target=show_popup, args=(sensitive_data_found,)).start()
