@@ -19,7 +19,7 @@ Certifique-se de ter um arquivo .env no mesmo diretório que o arquivo sniffer.p
 ```
 
 # Executando o Projeto
-Para executar o farejador de pacotes HTTP, basta executar o arquivo sniffer.py:
+Para executar o farejador de pacotes HTTP, você precisa navegar até o diretório onde o projeto está localizado. Certifique-se de que o arquivo sniffer.py está na pasta do projecta. Em seguida, execute o seguinte comando:
 ```bash
    sudo python3 sniffer.py
 ```
