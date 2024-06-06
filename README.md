@@ -35,7 +35,13 @@ Ao capturar os pacotes HTTP, o projeto procura por uma lista de palavras-chave a
 ## Exibição de Dados Sensíveis
 Os dados sensíveis capturados são exibidos em uma interface gráfica usando a biblioteca Tkinter. A interface mostra uma lista dos URLs dos pacotes capturados juntamente com os dados sensíveis encontrados em cada URL.
 ## Envio de Alertas
-O projeto é capaz de enviar alertas por e-mail e pelo Telegram quando dados sensíveis são detectados. Ele utiliza as credenciais configuradas no arquivo .env para enviar os alertas.
+O projeto é capaz de enviar alertas por e-mail e pelo Telegram quando dados sensíveis são detectados. Ele utiliza as seguintes bibliotecas para realizar esse processo:
+### Para E-mail
+O projeto utiliza a biblioteca smtplib para enviar e-mails através do protocolo SMTP (Simple Mail Transfer Protocol). Essa biblioteca é padrão do Python e permite a comunicação com servidores de e-mail. As credenciais de e-mail são configuradas no arquivo .env para autenticar-se no servidor SMTP.
+### Para Telegram
+Para enviar mensagens pelo Telegram, o projeto utiliza a biblioteca requests para fazer requisições HTTP para a API do Telegram. As credenciais do bot do Telegram, incluindo o token do bot e o ID do chat, são configuradas no arquivo .env. O projeto constrói a mensagem de alerta e a envia para a API do Telegram, que encaminha a mensagem para o chat especificado.
+
+Ambos os métodos de alerta são ativados quando dados sensíveis são detectados durante a captura de pacotes HTTP.
 ## Mudando a Interface de Rede
 Para alterar a interface de rede utilizada para a captura de pacotes, você precisa modificar a variável interface no arquivo sniffer.py. Por padrão, ela está definida como:
 ```bash
